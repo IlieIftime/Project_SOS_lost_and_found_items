@@ -1,3 +1,4 @@
+// Importa os pacotes e ficheiros necessários.
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_button.dart';
@@ -7,7 +8,9 @@ import 'registration_screen.dart';
 import 'homepage_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 
+// Um ecrã para o login do utilizador.
 class LoginScreen extends StatefulWidget {
+  // Uma flag para determinar se o utilizador deve ser redirecionado para o ecrã de registo.
   final bool isSigningUp;
   const LoginScreen({super.key, this.isSigningUp = false});
 
@@ -15,17 +18,24 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+// O estado para o LoginScreen.
 class _LoginScreenState extends State<LoginScreen> {
+  // Chave global para identificar unicamente o widget do formulário.
   final _formKey = GlobalKey<FormState>();
+  // Controladores para os campos de texto de email e senha.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  // Instância do serviço de autenticação.
   final _authService = AuthService();
+  // Indicador de estado de carregamento.
   bool _isLoading = false;
+  // Estado para alternar a visibilidade da senha.
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
+    // Se o utilizador pretende registar-se, redireciona para o ecrã de registo.
     if (widget.isSigningUp) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).push(
@@ -39,17 +49,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    // Liberta os recursos dos controladores.
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  // Lida com o processo de login.
   Future<void> _handleLogin() async {
+    // Valida os campos do formulário.
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      // Tenta fazer login com as credenciais fornecidas.
       final user = await _authService.login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -58,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        // Navegar para a tela apropriada baseado no perfil
+        // Navega para o ecrã apropriado com base na função do utilizador.
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => user.role == 'admin'
@@ -69,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      // Mostra uma SnackBar com a mensagem de erro.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
@@ -96,11 +111,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo ou ícone
+                  // Logótipo ou ícone da aplicação.
                   Image.asset('assets/logo.jpg', width: 120, height: 120),
                   const SizedBox(height: 16),
 
-                  // Título
+                  // Título da aplicação.
                   Text(
                     'SOS Perdidos e Achados',
                     textAlign: TextAlign.center,
@@ -111,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Subtítulo da aplicação.
                   Text(
                     'Encontre o que perdeu',
                     textAlign: TextAlign.center,
@@ -121,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 48),
 
-                  // Campo de email
+                  // Campo de entrada de email.
                   CustomTextField(
                     controller: _emailController,
                     label: 'Email',
@@ -139,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo de senha
+                  // Campo de entrada de senha.
                   CustomTextField(
                     controller: _passwordController,
                     label: 'Senha',
@@ -154,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                       return null;
                     },
+                    // Ícone para alternar a visibilidade da senha.
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -165,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Botão de login
+                  // Botão de login.
                   CustomButton(
                     text: 'Entrar',
                     onPressed: _handleLogin,
@@ -173,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Link para registro
+                  // Link para o ecrã de registo.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -194,6 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                    const SizedBox(height: 12),
+                  // Botão para ver itens sem conta (modo de pré-visualização).
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
@@ -206,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Credenciais de teste
+                  // Exibe as credenciais de teste para fácil acesso.
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -233,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         Text(
-                          'Usuário: user@sos.com / user123',
+                          'Utilizador: user@sos.com / user123',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,

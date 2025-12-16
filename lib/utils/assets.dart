@@ -1,3 +1,6 @@
+// Uma lista de caminhos de imagens de exemplo pré-definidas.
+// Estas imagens podem ser selecionadas pelos utilizadores como imagens de exemplo ao reportar um item,
+// especialmente se não tiverem uma foto real do objeto perdido ou achado.
 const List<String> assetImages = [
   'assets/mala.png',
   'assets/mala2.png',

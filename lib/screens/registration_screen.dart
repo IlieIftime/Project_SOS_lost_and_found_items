@@ -1,3 +1,4 @@
+// Importa os pacotes e ficheiros necessários.
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_button.dart';
@@ -5,6 +6,7 @@ import '../widgets/custom_textfield.dart';
 import '../utils/colors.dart';
 import 'homepage_screen.dart';
 
+// Um ecrã para o registo de novos utilizadores.
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
 
@@ -12,30 +14,40 @@ class RegistrationScreen extends StatefulWidget {
   State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
+// O estado para o RegistrationScreen.
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  // Chave global para identificar unicamente o widget do formulário.
   final _formKey = GlobalKey<FormState>();
+  // Controladores para os campos de texto de email, senha e confirmação de senha.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  // Instância do serviço de autenticação.
   final _authService = AuthService();
+  // Indicador de estado de carregamento.
   bool _isLoading = false;
+  // Estado para alternar a visibilidade da senha.
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
+    // Liberta os recursos dos controladores.
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
+  // Lida com o processo de registo do utilizador.
   Future<void> _handleRegister() async {
+    // Valida os campos do formulário.
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      // Tenta registar um novo utilizador com as credenciais fornecidas.
       final user = await _authService.register(
         _emailController.text.trim(),
         _passwordController.text,
@@ -44,7 +56,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        // Navegar para a homepage
+        // Navega para a homepage após o registo bem-sucedido.
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const HomepageScreen(),
@@ -53,6 +65,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      // Mostra uma SnackBar com a mensagem de erro.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
@@ -85,7 +98,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Ícone
+                  // Ícone para o ecrã de registo.
                   Icon(
                     Icons.person_add_rounded,
                     size: 80,
@@ -93,7 +106,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Título
+                  // Título do ecrã.
                   Text(
                     'Criar Conta',
                     textAlign: TextAlign.center,
@@ -104,6 +117,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Subtítulo do ecrã.
                   Text(
                     'Preencha os dados para se registar',
                     textAlign: TextAlign.center,
@@ -114,7 +128,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 48),
 
-                  // Campo de email
+                  // Campo de entrada de email.
                   CustomTextField(
                     controller: _emailController,
                     label: 'Email',
@@ -132,7 +146,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo de senha
+                  // Campo de entrada de senha.
                   CustomTextField(
                     controller: _passwordController,
                     label: 'Senha',
@@ -147,6 +161,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       }
                       return null;
                     },
+                    // Ícone para alternar a visibilidade da senha.
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -158,7 +173,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo de confirmação de senha
+                  // Campo de confirmação de senha.
                   CustomTextField(
                     controller: _confirmPasswordController,
                     label: 'Confirmar Senha',
@@ -173,6 +188,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       }
                       return null;
                     },
+                    // Ícone para alternar a visibilidade da confirmação de senha.
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
@@ -184,7 +200,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Botão de registro
+                  // Botão de registo.
                   CustomButton(
                     text: 'Registar',
                     onPressed: _handleRegister,
@@ -192,7 +208,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Link para login
+                  // Link para o ecrã de login.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -217,4 +233,3 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 }
-

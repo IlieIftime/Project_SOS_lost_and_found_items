@@ -1,3 +1,4 @@
+// Importa os pacotes e ficheiros necessários.
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -5,7 +6,9 @@ import '../utils/map_config.dart';
 import '../utils/tile_resolver.dart';
 import '../models/item_model.dart';
 
+// Um ecrã que permite ao utilizador escolher uma localização a partir de um mapa.
 class MapPickerScreen extends StatefulWidget {
+  // A localização inicial a ser exibida no mapa, se houver.
   final LocationModel? initialLocation;
 
   const MapPickerScreen({super.key, this.initialLocation});
@@ -14,23 +17,33 @@ class MapPickerScreen extends StatefulWidget {
   State<MapPickerScreen> createState() => _MapPickerScreenState();
 }
 
+// O estado para o MapPickerScreen.
 class _MapPickerScreenState extends State<MapPickerScreen> {
+  // Controlador para controlar programaticamente o mapa.
   late final MapController _controller = MapController();
+  // A localização escolhida pelo utilizador no mapa.
   ll.LatLng? _picked;
+  // O template de URL de tile ativo.
   String? _activeTemplate;
+  // Uma flag para indicar se o resolvedor de tiles está atualmente a testar um URL funcional.
   bool _probing = false;
+  // Uma mensagem de erro a ser exibida se o teste falhar.
   String? _probeError;
+  // O nível de zoom atual do mapa.
   double _zoom = 13.0;
 
   @override
   void initState() {
     super.initState();
+    // Se uma localização inicial for fornecida, define-a como a localização escolhida.
     if (widget.initialLocation != null) {
       _picked = ll.LatLng(widget.initialLocation!.latitude, widget.initialLocation!.longitude);
     }
+    // Se uma chave do MapTiler estiver disponível, começa a resolver o template de tile.
     if (MapConfig.hasMapTilerKey) _resolveTemplate();
   }
 
+  // Resolve de forma assíncrona um template de URL de tile funcional.
   Future<void> _resolveTemplate() async {
     setState(() {
       _probing = true;
@@ -45,27 +58,31 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     } else {
       setState(() {
         _probing = false;
-        _probeError = 'Não foi possível obter tiles válidos. Verifica a chave.';
+        _probeError = 'Não foi possível obter tiles válidos. Verifique a sua chave.';
       });
     }
   }
 
+  // Aumenta o zoom do mapa.
   void _zoomIn() {
     _zoom += 1;
     _controller.move(_controller.center, _zoom);
-    setState(() {});
+    setState(() {}); // Reconstrói para atualizar a UI, se necessário.
   }
 
+  // Diminui o zoom do mapa, com fixação de limites (clamping).
   void _zoomOut() {
-    _zoom = (_zoom - 1).clamp(1.0, 20.0);
+    _zoom = (_zoom - 1).clamp(1.0, 20.0); // Fixa o nível de zoom entre 1 e 20.
     _controller.move(_controller.center, _zoom);
-    setState(() {});
+    setState(() {}); // Reconstrói para atualizar a UI, se necessário.
   }
 
+  // Lida com um evento de toque no mapa, atualizando a localização escolhida.
   void _onTap(ll.LatLng p) {
     setState(() => _picked = p);
   }
 
+  // Confirma a localização escolhida e retorna-a para o ecrã anterior.
   void _confirm() {
     if (_picked == null) return;
     Navigator.of(context).pop(LocationModel(latitude: _picked!.latitude, longitude: _picked!.longitude));
@@ -73,16 +90,17 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Se nenhuma chave do MapTiler estiver configurada, mostra uma mensagem de erro.
     if (!MapConfig.hasMapTilerKey) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Escolher localização')),
+        appBar: AppBar(title: const Text('Escolher Localização')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Nenhuma chave de tiles configurada. Configure MAPTILER_KEY e tente novamente.'),
+                const Text('Nenhuma chave de tiles configurada. Configure a MAPTILER_KEY e tente novamente.'),
                 const SizedBox(height: 12),
                 ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Fechar')),
               ],
@@ -92,12 +110,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       );
     }
 
+    // O centro do mapa, usando Lisboa como padrão se nenhuma localização for escolhida.
     final center = _picked ?? ll.LatLng(38.736946, -9.142685);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escolher localização'),
+        title: const Text('Escolher Localização'),
         actions: [
+          // Botão para confirmar a seleção.
           TextButton(
             onPressed: _confirm,
             child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
@@ -105,8 +125,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         ],
       ),
       body: _probing
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator()) // Mostra um indicador de carregamento durante o teste.
           : _activeTemplate == null
+              // Mostra uma mensagem de erro se nenhum template puder ser resolvido.
               ? Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text(_probeError ?? 'Erro ao carregar tiles.'),
@@ -114,6 +135,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     ElevatedButton(onPressed: _resolveTemplate, child: const Text('Tentar novamente')),
                   ],),
                 )
+              // Constrói o mapa se um template estiver disponível.
               : Stack(
                   children: [
                     FlutterMap(
@@ -121,14 +143,16 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       options: MapOptions(
                         center: center,
                         zoom: _zoom,
-                        onTap: (tapPos, latlng) => _onTap(latlng),
+                        onTap: (tapPos, latlng) => _onTap(latlng), // Lida com toques no mapa.
                       ),
                       children: [
+                        // A camada de tiles para o fundo do mapa.
                         TileLayer(
                           urlTemplate: _activeTemplate!,
                           userAgentPackageName: 'com.example.app',
                           tileProvider: NetworkTileProvider(),
                         ),
+                        // Uma camada de marcadores para mostrar a localização escolhida.
                         if (_picked != null)
                           MarkerLayer(
                             markers: [
@@ -143,6 +167,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       ],
                     ),
 
+                    // Botões de zoom posicionados no mapa.
                     Positioned(
                       right: 12,
                       top: 12,
@@ -155,6 +180,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       ),
                     ),
 
+                    // Um botão na parte inferior para confirmar a localização.
                     if (_picked != null)
                       Positioned(
                         bottom: 24,
