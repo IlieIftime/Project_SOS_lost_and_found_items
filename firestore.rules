@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'admin@sos.com';
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.id == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /produtos_desaparecidos/{itemId} {
+      // Itens aprovados são públicos (convidado/preview funciona mesmo sem sessão).
+      // Admin vê tudo; cada utilizador vê os seus próprios reportes.
+      allow read: if isAdmin()
+        || resource.data.status in ['aprovado', 'approved', 'Aprovado', 'Approved']
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

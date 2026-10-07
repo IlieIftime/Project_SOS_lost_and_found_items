@@ -1,23 +1,15 @@
-// Importa os pacotes e ficheiros necessários.
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' as ll;
 import '../models/item_model.dart';
 import '../utils/map_config.dart';
 import '../utils/tile_resolver.dart';
 
-// Um widget OpenStreetMap que exibe itens num mapa.
 class OsmMapWidget extends StatefulWidget {
-  // A lista de itens a serem exibidos como marcadores.
   final List<ItemModel> items;
-  // O centro inicial do mapa.
-  final dynamic initialCenter; // Pode aceitar um LatLng personalizado ou nulo.
-  // O nível de zoom inicial do mapa.
+  final dynamic initialCenter; // accept our small LatLng or null
   final double initialZoom;
-  // Função de callback para quando o mapa é criado.
   final void Function(dynamic controller)? onMapCreated;
-  // Função de callback para quando um marcador é tocado.
   final void Function(ItemModel)? onMarkerTap;
 
   const OsmMapWidget({
@@ -33,7 +25,6 @@ class OsmMapWidget extends StatefulWidget {
   State<OsmMapWidget> createState() => _OsmMapWidgetState();
 }
 
-// O estado para o OsmMapWidget.
 class _OsmMapWidgetState extends State<OsmMapWidget> {
   late final MapController _mapController;
   String? _activeTileTemplate;
@@ -54,7 +45,6 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
     });
   }
 
-  // Resolve o template de tile ativo a partir dos candidatos disponíveis.
   Future<void> _resolveTileTemplate() async {
     setState(() {
       _probing = true;
@@ -69,26 +59,23 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
     } else {
       setState(() {
         _probing = false;
-        _probeError = 'Nenhum template de tile respondeu com sucesso. Verifique a chave do MapTiler.';
+        _probeError = 'Nenhum template de tiles respondeu com sucesso. Verifica a chave MapTiler.';
       });
     }
   }
 
-  // Aumenta o zoom do mapa.
   void _zoomIn() {
     _currentZoom += 1;
     _mapController.move(_mapController.center, _currentZoom);
     setState(() {});
   }
 
-  // Diminui o zoom do mapa.
   void _zoomOut() {
     _currentZoom = (_currentZoom - 1).clamp(1.0, 20.0);
     _mapController.move(_mapController.center, _currentZoom);
     setState(() {});
   }
 
-  // Ajusta os limites do mapa para enquadrar todos os marcadores de itens.
   void _fitToPoints() {
     final points = widget.items
         .where((i) => i.location != null)
@@ -111,7 +98,7 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
     try {
       _mapController.fitBounds(bounds, options: FitBoundsOptions(padding: EdgeInsets.all(48)));
     } catch (_) {
-      // Ignora erros de ajuste de limites.
+      // ignore fit errors
     }
   }
 
@@ -166,7 +153,7 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
               children: [
                 const Icon(Icons.block, size: 48, color: Colors.black45),
                 const SizedBox(height: 12),
-                const Text('Os tiles públicos do OpenStreetMap não devem ser usados por aplicações de produção.'),
+                const Text('Tiles públicos do OpenStreetMap não devem ser usados por aplicações de produção.'),
                 const SizedBox(height: 8),
                 const Text('Por favor, configure uma chave de tiles (ex: MapTiler) em lib/utils/map_config.dart (mapTilerKey).'),
                 const SizedBox(height: 12),
@@ -175,7 +162,7 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Configurar fornecedor de tiles'),
+                        title: const Text('Configurar tile provider'),
                         content: const Text(
                           'Para não usar os tiles públicos do OpenStreetMap (servidores voluntários), crie uma conta gratuita em https://www.maptiler.com/ e cole a sua API key em lib/utils/map_config.dart (mapTilerKey).',
                         ),
@@ -217,7 +204,7 @@ class _OsmMapWidgetState extends State<OsmMapWidget> {
                 const SizedBox(height: 8),
                 ElevatedButton(onPressed: _resolveTileTemplate, child: const Text('Tentar novamente')),
                 const SizedBox(height: 8),
-                const Text('Se o problema persistir, verifique a sua chave do MapTiler.'),
+                const Text('Se o problema persistir, verifica a tua chave MapTiler.'),
               ],
             ),
           ),

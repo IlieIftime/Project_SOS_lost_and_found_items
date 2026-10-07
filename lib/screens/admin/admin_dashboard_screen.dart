@@ -1,4 +1,3 @@
-// Importa os pacotes e ficheiros necessários.
 import 'package:flutter/material.dart';
 import '../../models/item_model.dart';
 import '../../services/auth_service.dart';
@@ -7,7 +6,6 @@ import '../../utils/colors.dart';
 import '../../widgets/asset_image_helper.dart';
 import '../login_screen.dart';
 
-// Um ecrã para os administradores gerirem os itens reportados.
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -15,42 +13,31 @@ class AdminDashboardScreen extends StatefulWidget {
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-// O estado para o AdminDashboardScreen.
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
-  // Instâncias de serviços para gestão de itens e autenticação.
   final _itemService = ItemService();
   final _authService = AuthService();
-
-  // Listas para guardar os itens pendentes e todos os itens.
   List<ItemModel> _pendingItems = [];
   List<ItemModel> _allItems = [];
-  // Indicador do estado de carregamento.
   bool _isLoading = true;
-  // Controlador para a barra de separadores (tabs).
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    // Inicializa o controlador de separadores com dois separadores.
     _tabController = TabController(length: 2, vsync: this);
-    // Carrega os itens quando o ecrã é inicializado.
     _loadItems();
   }
 
   @override
   void dispose() {
-    // Liberta os recursos do controlador de separadores.
     _tabController.dispose();
     super.dispose();
   }
 
-  // Busca tanto os itens pendentes como todos os itens do serviço de itens.
   Future<void> _loadItems() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      // Busca os itens pendentes e todos os itens em paralelo.
       final pending = await _itemService.getPendingItems();
       final all = await _itemService.getItems();
       if (mounted) {
@@ -70,12 +57,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     }
   }
 
-  // Valida um item específico, mudando o seu estado para 'aprovado'.
   Future<void> _validateItem(ItemModel item) async {
     if (item.id == null) return;
     try {
       await _itemService.validateItem(item.id!);
-      await _loadItems(); // Atualiza as listas após a validação.
+      await _loadItems(); // Refresh lists
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item validado com sucesso!'), backgroundColor: AppColors.success),
@@ -84,25 +70,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao validar o item: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Erro ao validar item: $e'), backgroundColor: AppColors.error),
         );
       }
     }
   }
 
-  // Apaga um item específico do sistema.
   Future<void> _deleteItem(ItemModel item) async {
     if (item.id == null) return;
 
-    // Mostra um diálogo de confirmação antes de apagar.
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Remoção'),
-        content: const Text('Tem a certeza que deseja remover este item?'),
+        content: const Text('Deseja realmente remover este item?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remover'), style: TextButton.styleFrom(foregroundColor: AppColors.error)),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('Remover')),
         ],
       ),
     );
@@ -111,7 +95,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     try {
       await _itemService.deleteItem(item.id!, item.imageUrl);
-      await _loadItems(); // Atualiza as listas após a remoção.
+      await _loadItems(); // Refresh lists
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item removido com sucesso!'), backgroundColor: AppColors.success),
@@ -120,24 +104,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao remover o item: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Erro ao remover item: $e'), backgroundColor: AppColors.error),
         );
       }
     }
   }
 
-  // Faz logout do utilizador atual e navega para o ecrã de login.
   Future<void> _logout() async {
     await _authService.logout();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false, // Remove todas as rotas anteriores.
+        (route) => false,
       );
     }
   }
 
-  // Constrói a lista de itens para um determinado separador.
   Widget _buildItemList(List<ItemModel> items, bool isAdmin, String? currentUserId) {
     if (items.isEmpty) {
       return Center(
@@ -145,7 +127,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       );
     }
 
-    // Um indicador de atualização (pull-to-refresh) para recarregar os itens.
     return RefreshIndicator(
       onRefresh: _loadItems,
       child: ListView.builder(
@@ -153,13 +134,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-          // Determina se o utilizador atual pode apagar o item.
           final canDelete = isAdmin || (item.createdBy != null && item.createdBy == currentUserId);
           return _AdminItemCard(
             item: item,
-            // Fornece o callback de validação apenas para itens pendentes.
             onValidate: item.status == 'pendente' ? () => _validateItem(item) : null,
-            // Fornece o callback de remoção se o utilizador tiver permissão.
             onDelete: canDelete ? () => _deleteItem(item) : null,
           );
         },
@@ -184,7 +162,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            // Separador para itens pendentes, com um emblema a mostrar a contagem.
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -200,19 +177,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ],
               ),
             ),
-            // Separador para todos os itens.
             const Tab(text: 'Todos os Itens'),
           ],
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator()) // Mostra um indicador de carregamento enquanto os itens são buscados.
+          ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
               children: [
-                // O conteúdo para o separador 'Pendentes'.
                 _buildItemList(_pendingItems, isAdmin, currentUser?.id),
-                // O conteúdo para o separador 'Todos os Itens'.
                 _buildItemList(_allItems, isAdmin, currentUser?.id),
               ],
             ),
@@ -220,18 +194,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 }
 
-// Um widget de cartão para exibir um item no painel de administração.
 class _AdminItemCard extends StatelessWidget {
   final ItemModel item;
-  final VoidCallback? onValidate; // Callback para o botão de validar.
-  final VoidCallback? onDelete; // Callback para o botão de apagar.
+  final VoidCallback? onValidate;
+  final VoidCallback? onDelete;
 
   const _AdminItemCard({required this.item, this.onValidate, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     final assetPath = item.assetImage;
-    // Formata a string de localização.
     final locationText = item.location != null
         ? 'Lat: ${item.location!.latitude.toStringAsFixed(4)}, Long: ${item.location!.longitude.toStringAsFixed(4)}'
         : 'Localização não disponível';
@@ -243,7 +215,6 @@ class _AdminItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Exibe a imagem do item se disponível.
           if (assetPath?.isNotEmpty == true)
             buildAssetImageIfExists(assetPath, width: double.infinity, height: 200, fit: BoxFit.cover)
           else if (item.imageUrl?.isNotEmpty == true)
@@ -254,7 +225,6 @@ class _AdminItemCard extends StatelessWidget {
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                // Mostra um placeholder se a imagem não carregar.
                 errorBuilder: (context, error, stackTrace) =>
                     Container(height: 200, color: Colors.grey.shade300, child: const Icon(Icons.image_not_supported, size: 64)),
               ),
@@ -264,19 +234,18 @@ class _AdminItemCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Exibe as tags de categoria and estado.
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                       child: Text(item.category, style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                          color: item.status == 'aprovado' ? AppColors.success.withOpacity(0.1) : AppColors.warning.withOpacity(0.1),
+                          color: item.status == 'aprovado' ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4)),
                       child: Text(item.status.toUpperCase(),
                           style: TextStyle(color: item.status == 'aprovado' ? AppColors.success : AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -284,10 +253,8 @@ class _AdminItemCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Descrição do item.
                 Text(item.description, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
-                // Informação da localização.
                 Row(
                   children: [
                     const Icon(Icons.location_on, size: 16, color: Colors.grey),
@@ -296,7 +263,6 @@ class _AdminItemCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Botões de ação (Validar e Remover).
                 Row(
                   children: [
                     if (onValidate != null)

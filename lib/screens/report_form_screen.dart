@@ -1,24 +1,18 @@
-// Importa os pacotes necessários para operações assíncronas, manipulação de ficheiros, UI, e mais.
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:latlong2/latlong.dart' as ll;
-import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
-
-// Importa modelos, serviços, widgets e utilitários personalizados.
 import '../models/item_model.dart';
 import '../services/item_service.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_textfield.dart';
 import '../utils/colors.dart';
 import 'map_picker_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import '../utils/tile_resolver.dart';
 import '../utils/assets.dart';
 
-// ReportFormScreen é um StatefulWidget para o formulário de relatório de itens.
 class ReportFormScreen extends StatefulWidget {
   const ReportFormScreen({super.key});
 
@@ -27,28 +21,20 @@ class ReportFormScreen extends StatefulWidget {
 }
 
 class _ReportFormScreenState extends State<ReportFormScreen> {
-  // Chave para o formulário e controladores de edição de texto.
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _locationSearchController = TextEditingController();
-
-  // Serviços e utilitários.
   final _itemService = ItemService();
   final _imagePicker = ImagePicker();
+  final _phoneController = TextEditingController();
 
-  // Variáveis de estado.
+
   String _selectedCategory = 'Acessórios';
   String? _selectedAsset;
   XFile? _selectedImage;
   bool _isLoading = false;
   LocationModel? _selectedLocation;
-  bool _requireLocation = true; // A seleção da localização é obrigatória.
-  List<geocoding.Location> _locationSearchResults = [];
-  Timer? _debounce;
-  final MapController _mapController = MapController();
+  final bool _requireLocation = true; // selection mandatory
 
-  // Lista de categorias.
   final List<String> _categories = [
     'Acessórios',
     'Chaves',
@@ -58,57 +44,12 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    // Adiciona um listener ao controlador de pesquisa de localização para implementar o debounce.
-    _locationSearchController.addListener(() {
-      if (_debounce?.isActive ?? false) _debounce!.cancel();
-      _debounce = Timer(const Duration(milliseconds: 500), () {
-        if (_locationSearchController.text.isNotEmpty) {
-          _searchLocation(_locationSearchController.text);
-        } else {
-          setState(() {
-            _locationSearchResults = [];
-          });
-        }
-      });
-    });
-  }
-
-  @override
   void dispose() {
-    // Liberta os recursos dos controladores e do temporizador de debounce.
     _descriptionController.dispose();
     _phoneController.dispose();
-    _locationSearchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
-  // Pesquisa uma localização com base numa string de consulta.
-  Future<void> _searchLocation(String query) async {
-    try {
-      List<geocoding.Location> locations = await geocoding.locationFromAddress(query);
-      setState(() {
-        _locationSearchResults = locations;
-      });
-    } catch (e) {
-      // Ignora erros de geocodificação (ex: nenhum resultado encontrado).
-    }
-  }
-
-  // Seleciona uma localização da lista de resultados da pesquisa.
-  void _onLocationSearchResultSelected(geocoding.Location location) {
-    setState(() {
-      _selectedLocation = LocationModel(latitude: location.latitude, longitude: location.longitude);
-      _locationSearchController.clear();
-      _locationSearchResults = [];
-    });
-    // Move o mapa para a localização selecionada.
-    _mapController.move(ll.LatLng(location.latitude, location.longitude), 15.0);
-  }
-
-  // Escolhe uma imagem da câmara ou da galeria.
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _imagePicker.pickImage(
@@ -135,7 +76,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     }
   }
 
-  // Exibe um diálogo para escolher a fonte da imagem (câmara ou galeria).
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
@@ -144,7 +84,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera),
-              title: const Text('Câmara'),
+              title: const Text('Câmera'),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -164,7 +104,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     );
   }
 
-  // Submete o formulário de relatório.
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     if (_requireLocation && _selectedLocation == null) {
@@ -174,7 +113,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
     setState(() => _isLoading = true);
 
+    print('📞 TELEFONE NO FORM: "${_phoneController.text}"');
+
+
     try {
+      // Simular localização (em produção, usaria GPS)
       final item = ItemModel(
         description: _descriptionController.text.trim(),
         category: _selectedCategory,
@@ -183,13 +126,20 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             ? 'https://via.placeholder.com/300x200?text=$_selectedCategory'
             : null,
         assetImage: _selectedAsset,
-        location: _selectedLocation,
+        location: LocationModel(
+          latitude: _selectedLocation?.latitude ?? (38.736946 + (DateTime.now().millisecond / 100000)),
+          longitude: _selectedLocation?.longitude ?? (-9.142685 + (DateTime.now().millisecond / 100000)),
+        ),
       );
 
       await _itemService.reportItem(item);
 
       if (!mounted) return;
 
+      print('📦 ITEM PHONE: "${item.phone}"');
+
+
+      // Mostrar dialog informativo em vez de apenas snackbar
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -199,18 +149,18 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'O seu item foi reportado com sucesso!',
+                'Seu item foi reportado com sucesso!',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 12),
               Text(
-                'O item ficará pendente até que um administrador o aprove.',
+                'O item ficará pendente até que um administrador aprove.',
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 8),
               Text(
-                'Após a aprovação, ele aparecerá na lista para todos os utilizadores.',
+                'Após a aprovação, ele aparecerá na lista para todos os usuários.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12),
               ),
@@ -242,7 +192,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     }
   }
 
-  // Obtém e usa a localização atual do utilizador.
   Future<void> _useMyLocation() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
@@ -263,7 +212,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       setState(() {
         _selectedLocation = LocationModel(latitude: pos.latitude, longitude: pos.longitude);
       });
-       _mapController.move(ll.LatLng(pos.latitude, pos.longitude), 15.0);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao obter localização: $e')));
     }
@@ -284,7 +232,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Secção de informações.
+              // Informação
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -310,19 +258,30 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Campo de seleção de categoria.
-              const Text('Categoria', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Categoria
+              const Text(
+                'Categoria',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
                 items: _categories.map((category) {
-                  return DropdownMenuItem(value: category, child: Text(category));
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
@@ -332,8 +291,14 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Campo de descrição.
-              const Text('Descrição', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Descrição
+              const Text(
+                'Descrição',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
               CustomTextField(
                 controller: _descriptionController,
@@ -341,27 +306,42 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 hint: 'Descreva o item em detalhe',
                 maxLines: 4,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Por favor, insira uma descrição';
-                  if (value.length < 10) return 'A descrição deve ter no mínimo 10 caracteres';
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira uma descrição';
+                  }
+                  if (value.length < 10) {
+                    return 'A descrição deve ter no mínimo 10 caracteres';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
 
-              // Campo de imagem de exemplo.
-              const Text('Imagem do Item (Opcional)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+               // Asset Image
+              const Text(
+                'Imagem do Item (Opcional)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedAsset,
+                initialValue: _selectedAsset,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   hintText: 'Selecione uma imagem de exemplo',
                 ),
                 items: assetImages.map((asset) {
-                  return DropdownMenuItem(value: asset, child: Text(asset.split('/').last));
+                  return DropdownMenuItem(
+                    value: asset,
+                    child: Text(asset.split('/').last),
+                  );
                 }).toList(),
                 onChanged: (value) {
                   setState(() => _selectedAsset = value);
@@ -369,23 +349,40 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Secção de foto do item.
-              const Text('Foto do Item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Imagem
+              const Text(
+                'Foto do Item',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
+
               if (_selectedImage != null)
                 Stack(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.file(File(_selectedImage!.path), height: 200, width: double.infinity, fit: BoxFit.cover),
+                      child: Image.file(
+                        File(_selectedImage!.path),
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
                       child: IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () => setState(() => _selectedImage = null),
-                        style: IconButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        onPressed: () {
+                          setState(() => _selectedImage = null);
+                        },
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -399,24 +396,50 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid, width: 2),
+                      border: Border.all(
+                        color: Colors.grey.shade400,
+                        style: BorderStyle.solid,
+                        width: 2,
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_photo_alternate, size: 64, color: Colors.grey.shade600),
+                        Icon(
+                          Icons.add_photo_alternate,
+                          size: 64,
+                          color: Colors.grey.shade600,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Adicionar Foto', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                        Text(
+                          'Adicionar Foto',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Toque para selecionar', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                        Text(
+                          'Toque para selecionar',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               const SizedBox(height: 32),
 
-              // Campo de telefone de contacto.
-              const Text('Telefone de contacto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              // Telefone
+              const Text(
+                'Telefone de contacto',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
               CustomTextField(
                 controller: _phoneController,
@@ -424,41 +447,64 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 hint: 'Ex: 912345678',
                 keyboardType: TextInputType.phone,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Insira um número de telefone';
-                  if (!RegExp(r'^[0-9]{9}$').hasMatch(value)) return 'Número inválido (9 dígitos)';
+                  if (value == null || value.isEmpty) {
+                    return 'Insira um número de telefone';
+                  }
+                  if (!RegExp(r'^[0-9]{9}$').hasMatch(value)) {
+                    return 'Número inválido (9 dígitos)';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
-              
-              // Barra de pesquisa de localização.
-              const Text('Pesquisar Localização', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: _locationSearchController,
-                label: 'Endereço',
-                hint: 'Digite um endereço para pesquisar',
-                prefixIcon: Icons.search,
-              ),
-              // Exibe os resultados da pesquisa de localização.
-              if (_locationSearchResults.isNotEmpty)
-                SizedBox(
-                  height: 150,
-                  child: ListView.builder(
-                    itemCount: _locationSearchResults.length,
-                    itemBuilder: (context, index) {
-                      final location = _locationSearchResults[index];
-                      return ListTile(
-                        title: Text('Localização $index'), // Nome de placeholder
-                        subtitle: Text('Lat: ${location.latitude.toStringAsFixed(4)}, Lon: ${location.longitude.toStringAsFixed(4)}'),
-                        onTap: () => _onLocationSearchResultSelected(location),
-                      );
-                    },
-                  ),
-                ),
-              const SizedBox(height: 24),
 
-              // Cabeçalho do seletor de mapa.
+              // Botão de submissão
+              CustomButton(
+                text: 'Reportar Item',
+                onPressed: _submitForm,
+                isLoading: _isLoading,
+              ),
+              const SizedBox(height: 16),
+
+              // Nota sobre localização
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.amber.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Sua localização atual será registada automaticamente',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Localização manual via mapa
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.of(context).push<LocationModel?>(
+                    MaterialPageRoute(builder: (context) => MapPickerScreen(initialLocation: _selectedLocation)),
+                  );
+                  if (result != null) setState(() => _selectedLocation = result);
+                },
+                icon: const Icon(Icons.place),
+                label: Text(_selectedLocation == null ? 'Escolher localização no mapa' : 'Localização selecionada'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              ),
+              const SizedBox(height: 12),
+              // Inline map picker header
               Row(
                 children: [
                   Expanded(
@@ -470,63 +516,90 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                   ElevatedButton.icon(
                     onPressed: _useMyLocation,
                     icon: const Icon(Icons.my_location),
-                    label: const Text('Usar a minha localização'),
+                    label: const Text('Usar minha localização'),
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              // Pré-visualização do mapa.
+              // Inline map picker (small preview). Tap to open full screen picker.
               GestureDetector(
                 onTap: () async {
                   final result = await Navigator.of(context).push<LocationModel?>(
                     MaterialPageRoute(builder: (context) => MapPickerScreen(initialLocation: _selectedLocation)),
                   );
-                  if (result != null) {
-                     setState(() => _selectedLocation = result);
-                     _mapController.move(ll.LatLng(result.latitude, result.longitude), 15.0);
-                  }
+                  if (result != null) setState(() => _selectedLocation = result);
                 },
                 child: Container(
                   height: 200,
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey.shade200),
                   child: _selectedLocation == null
-                      ? Center(child: Text('Toque para escolher a localização', style: TextStyle(color: AppColors.textSecondary)))
+                      ? Center(child: Text('Toque para escolher localização', style: TextStyle(color: AppColors.textSecondary)))
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: FutureBuilder<String?>(
-                            future: TileResolver.getActiveTemplate(),
-                            builder: (context, snap) {
-                              if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                              if (!snap.hasData || snap.data == null) {
-                                return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Erro ao carregar tiles.'), const SizedBox(height:8), ElevatedButton(onPressed: () => setState((){}), child: const Text('Tentar novamente'))]));
-                              }
-                              final tmpl = snap.data!;
-                              return FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  center: ll.LatLng(_selectedLocation!.latitude, _selectedLocation!.longitude),
-                                  zoom: 15.0,
-                                ),
-                                children: [
-                                  TileLayer(
-                                    urlTemplate: tmpl,
-                                    userAgentPackageName: 'com.example.app',
-                                    tileProvider: NetworkTileProvider(),
-                                  ),
-                                  MarkerLayer(
-                                    markers: [
-                                      Marker(
-                                        point: ll.LatLng(_selectedLocation!.latitude, _selectedLocation!.longitude),
-                                        width: 40,
-                                        height: 40,
-                                        builder: (ctx) => const Icon(Icons.location_on, color: Colors.red, size: 36),
+                          child: SizedBox.expand(
+                            child: FutureBuilder<String?>(
+                              future: TileResolver.getActiveTemplate(),
+                              builder: (context, snap) {
+                                if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                                if (!snap.hasData || snap.data == null) {
+                                  return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Erro ao carregar tiles.'), const SizedBox(height:8), ElevatedButton(onPressed: () => setState((){}), child: const Text('Tentar novamente'))]));
+                                }
+                                final tmpl = snap.data!;
+                                double inlineZoom = 15.0;
+                                final inlineController = MapController();
+                                return Stack(
+                                  children: [
+                                    FlutterMap(
+                                      mapController: inlineController,
+                                      options: MapOptions(
+                                        center: ll.LatLng(
+                                          _selectedLocation!.latitude,
+                                          _selectedLocation!.longitude,
+                                        ),
+                                        zoom: inlineZoom,
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
+                                      children: [
+                                        TileLayer(
+                                          urlTemplate: tmpl,
+                                          userAgentPackageName: 'com.example.app',
+                                          tileProvider: NetworkTileProvider(),
+                                        ),
+                                        MarkerLayer(
+                                          markers: [
+                                            Marker(
+                                              point: ll.LatLng(
+                                                _selectedLocation!.latitude,
+                                                _selectedLocation!.longitude,
+                                              ),
+                                              width: 40,
+                                              height: 40,
+                                              builder: (ctx) => const Icon(
+                                                Icons.location_on,
+                                                color: Colors.red,
+                                                size: 36,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+
+                                    Positioned(
+                                      right: 8,
+                                      top: 8,
+                                      child: Column(
+                                        children: [
+                                          FloatingActionButton.small(onPressed: () { inlineZoom += 1; inlineController.move(inlineController.center, inlineZoom); }, heroTag: 'inline_zoom_in', child: const Icon(Icons.add)),
+                                          const SizedBox(height: 8),
+                                          FloatingActionButton.small(onPressed: () { inlineZoom = (inlineZoom - 1).clamp(1.0, 20.0); inlineController.move(inlineController.center, inlineZoom); }, heroTag: 'inline_zoom_out', child: const Icon(Icons.remove)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ),
                 ),
@@ -536,13 +609,6 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text('Lat: ${_selectedLocation!.latitude.toStringAsFixed(6)}, Long: ${_selectedLocation!.longitude.toStringAsFixed(6)}'),
                 ),
-              const SizedBox(height: 24),
-              // Botão de submissão.
-              CustomButton(
-                text: 'Reportar Item',
-                onPressed: _submitForm,
-                isLoading: _isLoading,
-              ),
             ],
           ),
         ),

@@ -1,6 +1,8 @@
 // Importa os pacotes necessários.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Para a inicialização do Firebase.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase_options.dart';
 
 // Importa os ecrãs e utilitários da aplicação.
 import 'screens/login_screen.dart';
@@ -11,7 +13,19 @@ void main() async {
   // Garante que a ligação (binding) do Flutter está inicializada antes de executar a aplicação.
   WidgetsFlutterBinding.ensureInitialized();
   // Inicializa os serviços do Firebase.
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // FIX (web/Edge): o canal WebChannel do Firestore fica bloqueado/pendurado
+  // (extensões, tracking prevention, proxies) -> leituras/escritas demoram ~20s
+  // ou falham. Long-polling é fiável. Cache offline desligada para não
+  // servir/guardar estado antigo durante a demo.
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: false,
+    webExperimentalForceLongPolling: true,
+  );
+
   // Executa o widget principal da aplicação.
   runApp(const MyApp());
 }

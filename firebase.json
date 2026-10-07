@@ -1,0 +1,28 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "perdidos-achados-da559",
+          "appId": "1:934514708432:android:dab4f31a41812f8437f3d5",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "perdidos-achados-da559",
+          "configurations": {
+            "android": "1:934514708432:android:dab4f31a41812f8437f3d5",
+            "ios": "1:934514708432:ios:edb18fb915b9d9c037f3d5",
+            "macos": "1:934514708432:ios:edb18fb915b9d9c037f3d5",
+            "web": "1:934514708432:web:f9a043a17e8a805f37f3d5",
+            "windows": "1:934514708432:web:1bf8f5fa4d4a527b37f3d5"
+          }
+        }
+      }
+    }
+  }
+}

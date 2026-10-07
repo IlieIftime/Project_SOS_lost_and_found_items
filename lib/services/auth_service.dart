@@ -1,134 +1,148 @@
-// Importa os pacotes necessários para autenticação Firebase e Firestore.
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Importa o modelo de utilizador.
 import '../models/user_model.dart';
 
-// Uma classe de serviço para lidar com toda a lógica relacionada à autenticação.
 class AuthService {
-  // Padrão Singleton para garantir que apenas uma instância de AuthService é criada.
+  // Singleton (igual ao antigo)
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  // Instâncias do FirebaseAuth e do FirebaseFirestore.
+  static const _adminEmail = 'admin@sos.com';
+  // Tempo máximo à espera do Firestore no login/registo (não bloqueia a UI).
+  static const _fsTimeout = Duration(seconds: 8);
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // O utilizador atualmente com sessão iniciada.
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
 
-  // Inicia sessão de um utilizador com email e senha usando o Firebase.
-  Future<UserModel?> login(String email, String password) async {
+  /// Garante uma sessão (anónima) para o modo convidado/preview.
+  /// Nunca lança: se falhar, as regras públicas de leitura (aprovados) cobrem.
+  Future<void> ensureSignedIn() async {
     try {
-      // Inicia sessão com as credenciais fornecidas.
-      final cred = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final uid = cred.user!.uid;
-
-      // Busca os dados do utilizador no Firestore.
-      final docRef = _firestore.collection('users').doc(uid);
-      final doc = await docRef.get();
-
-      // Verifica se o email pertence a um administrador.
-      final isAdminEmail = (cred.user!.email ?? email).toLowerCase() == 'admin@sos.com';
-
-      if (!doc.exists) {
-        // Se o documento do utilizador não existir, cria um novo.
-        _currentUser = UserModel(
-          id: uid,
-          email: cred.user!.email ?? email,
-          role: isAdminEmail ? 'admin' : 'user',
-        );
-
-        await docRef.set(_currentUser!.toJson());
-      } else {
-        // Se o documento existir, lê os dados.
-        _currentUser = UserModel.fromJson(doc.data()!);
-
-        // Se o email for de um admin mas a função no Firestore não for 'admin', atualiza-a.
-        if (isAdminEmail && _currentUser!.role != 'admin') {
-          _currentUser = UserModel(
-            id: _currentUser!.id,
-            email: _currentUser!.email,
-            role: 'admin',
-          );
-          await docRef.update({'role': 'admin'});
-        }
+      if (_auth.currentUser == null) {
+        await _auth.signInAnonymously().timeout(const Duration(seconds: 10));
       }
-
-      return _currentUser;
-    } on FirebaseAuthException catch (e) {
-      // Lida com erros de autenticação do Firebase.
-      throw Exception(_mapAuthError(e));
-    } catch (_) {
-      // Lida com outros erros.
-      throw Exception('Erro ao iniciar sessão. Tente novamente.');
+    } catch (e) {
+      debugPrint('ensureSignedIn (anónimo) falhou: $e');
     }
   }
 
-  // Regista um novo utilizador com email e senha usando o Firebase.
-  Future<UserModel?> register(String email, String password) async {
+  // LOGIN COM FIREBASE
+  Future<UserModel?> login(String email, String password) async {
     try {
-      // Cria um novo utilizador com as credenciais fornecidas.
-      final cred = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final cred = await _auth
+          .signInWithEmailAndPassword(email: email, password: password)
+          .timeout(const Duration(seconds: 20));
 
       final uid = cred.user!.uid;
+      final mail = cred.user!.email ?? email;
+      final isAdminEmail = mail.toLowerCase() == _adminEmail;
 
-      // Verifica se o email é de um administrador.
-      final isAdminEmail = email.toLowerCase() == 'admin@sos.com';
+      // Perfil no Firestore: melhor esforço. Se falhar/demorar, o login
+      // NÃO falha: o papel deriva do email (as regras também o fazem).
+      var role = isAdminEmail ? 'admin' : 'user';
+      final docRef = _firestore.collection('users').doc(uid);
+      try {
+        final doc = await docRef.get().timeout(_fsTimeout);
+        if (!doc.exists) {
+          _fireAndForget(docRef.set(
+              UserModel(id: uid, email: mail, role: role).toJson()));
+        } else {
+          final stored = UserModel.fromJson(doc.data()!);
+          role = isAdminEmail ? 'admin' : stored.role;
+          if (isAdminEmail && stored.role != 'admin') {
+            _fireAndForget(docRef.update({'role': 'admin'}));
+          }
+        }
+      } catch (e) {
+        debugPrint('Perfil Firestore indisponível no login (continua): $e');
+      }
 
-      // Cria um novo modelo de utilizador.
+      _currentUser = UserModel(id: uid, email: mail, role: role);
+      return _currentUser;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Login FirebaseAuthException: ${e.code} ${e.message}');
+      throw Exception(_mapAuthError(e));
+    } on TimeoutException {
+      throw Exception(
+          'Sem resposta do Firebase. Verifica a ligação e tenta novamente.');
+    } catch (e) {
+      debugPrint('Login erro: $e');
+      throw Exception('Erro ao iniciar sessão: $e');
+    }
+  }
+
+  // REGISTO COM FIREBASE
+  Future<UserModel?> register(String email, String password) async {
+    try {
+      final cred = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password)
+          .timeout(const Duration(seconds: 20));
+
+      final uid = cred.user!.uid;
+      final mail = cred.user!.email ?? email;
+      final isAdminEmail = mail.toLowerCase() == _adminEmail;
+
       _currentUser = UserModel(
         id: uid,
-        email: cred.user!.email ?? email,
+        email: mail,
         role: isAdminEmail ? 'admin' : 'user',
       );
 
-      // Guarda os dados do novo utilizador no Firestore.
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .set(_currentUser!.toJson());
+      // Escrita do perfil sem bloquear (antes demorava ~20s e dava erro
+      // mesmo com a conta criada).
+      _fireAndForget(
+          _firestore.collection('users').doc(uid).set(_currentUser!.toJson()));
 
       return _currentUser;
     } on FirebaseAuthException catch (e) {
-      // Lida com erros de autenticação do Firebase.
+      debugPrint('Registo FirebaseAuthException: ${e.code} ${e.message}');
       throw Exception(_mapAuthError(e));
-    } catch (_) {
-      // Lida com outros erros.
-      throw Exception('Erro ao registar. Tente novamente.');
+    } on TimeoutException {
+      throw Exception(
+          'Sem resposta do Firebase. Verifica a ligação e tenta novamente.');
+    } catch (e) {
+      debugPrint('Registo erro: $e');
+      throw Exception('Erro ao registar: $e');
     }
   }
 
-  // Termina a sessão do utilizador atual.
+  void _fireAndForget(Future<void> f) {
+    f.catchError((Object e) => debugPrint('Escrita Firestore falhou: $e'));
+  }
+
   Future<void> logout() async {
     await _auth.signOut();
     _currentUser = null;
   }
 
-  // Mapeia os códigos de erro de autenticação do Firebase para mensagens amigáveis para o utilizador.
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
         return 'Utilizador não encontrado.';
       case 'wrong-password':
-        return 'Palavra-passe incorreta.';
+      case 'invalid-credential':
+      case 'invalid-login-credentials':
+        return 'Email ou palavra-passe incorretos.';
       case 'email-already-in-use':
         return 'Já existe uma conta com este email.';
       case 'weak-password':
         return 'A palavra-passe é demasiado fraca.';
       case 'invalid-email':
         return 'Email inválido.';
+      case 'network-request-failed':
+        return 'Falha de rede ao contactar o Firebase.';
+      case 'too-many-requests':
+        return 'Demasiadas tentativas. Aguarda uns minutos.';
+      case 'operation-not-allowed':
+        return 'Método de login desativado na consola Firebase.';
       default:
-        return e.message ?? 'Ocorreu um erro de autenticação.';
+        return '${e.message ?? 'Erro de autenticação.'} (${e.code})';
     }
   }
 }
