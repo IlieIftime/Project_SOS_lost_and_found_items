@@ -1,97 +1,166 @@
-# SOS Perdidos e Achados
+# SOS Lost and Found
 
-## Visão Geral
+A Flutter mobile application that allows users to report lost or found objects, browse items reported by other users, and locate them on an interactive map.
 
-O **SOS Perdidos e Achados** é uma aplicação móvel desenvolvida em Flutter, criada para facilitar o reporte e a busca por itens perdidos. A plataforma funciona como um ponto central onde utilizadores podem publicar informações sobre objetos que perderam ou encontraram, com o objetivo de ajudar a devolvê-los aos seus respetivos donos. A aplicação inclui um sistema de autenticação, um painel de administração para moderação de conteúdo, e funcionalidades de geolocalização para visualizar a localização dos itens num mapa.
+Developed as a 3rd-year Bachelor's degree project in Mobile Programming.
 
-## Funcionalidades
+## Overview
 
-### Utilizador Padrão
-- **Autenticação**: Registo e login de novas contas de utilizador.
-- **Visualização de Itens**: Acesso a uma lista de itens perdidos e achados que já foram aprovados.
-- **Filtro por Categoria**: Capacidade de filtrar os itens por categorias como "Acessórios", "Chaves", "Documentos", etc.
-- **Reportar um Item**: Formulário completo para reportar um item, incluindo descrição, categoria, fotografia (via câmara ou galeria) e localização.
-- **Seleção de Localização**: Múltiplas formas de definir a localização de um item:
-    - Utilizar a localização GPS atual do dispositivo.
-    - Pesquisar por um endereço.
-    - Selecionar um ponto diretamente num mapa interativo.
-- **Visualização no Mapa**: Ver a localização de todos os itens reportados num mapa.
+The application connects people who have lost or found objects. Regular users can report items with a photo and description, browse approved listings, and view locations on a map. Administrators moderate content by validating or removing reported items before they become publicly visible.
 
-### Administrador
-- **Painel de Administração**: Dashboard exclusivo para a gestão de todos os itens reportados.
-- **Moderação de Conteúdo**: Capacidade de aprovar ou remover itens que estão pendentes de revisão.
-- **Visão Geral**: Acesso a todos os itens da plataforma, incluindo os pendentes e os já aprovados.
+## Features
 
-## Arquitetura do Projeto
+### Regular Users
 
-O projeto segue uma arquitetura simples e organizada, separando as responsabilidades em diferentes diretórios:
+- User registration and login
+- Report lost/found items with photo and description
+- Browse the list of approved items
+- Filter items by category (Accessories, Keys, Documents, Electronics, Others)
+- View item locations on an interactive map
 
-- `lib/`
-  - `main.dart`: Ponto de entrada da aplicação.
-  - `models/`: Define as estruturas de dados da aplicação (ex: `ItemModel`, `UserModel`).
-  - `screens/`: Contém todos os ecrãs (interfaces de utilizador) da aplicação.
-    - `admin/`: Ecrãs específicos para a área de administração.
-  - `services/`: Centraliza a lógica de negócio, como a autenticação (`AuthService`) e a gestão de itens (`ItemService`).
-  - `utils/`: Ficheiros utilitários, como paleta de cores (`colors.dart`), estilos (`styles.dart`) e configurações de mapa (`map_config.dart`).
-  - `widgets/`: Componentes de UI reutilizáveis (ex: `CustomButton`, `CustomTextField`).
+### Administrators
 
-## Requisitos
+- Dedicated admin dashboard
+- Review and validate pending items
+- Remove inappropriate items
+- View all items (approved and pending)
 
-- **Flutter SDK**: Versão 3.9.2 ou superior.
-- **IDE**: Android Studio ou Visual Studio Code.
-- **Dispositivo**: Emulador Android/iOS ou um dispositivo físico.
-- **Chave de API (Mapas)**: Para a funcionalidade do mapa, é necessária uma chave de API do [MapTiler](https://www.maptiler.com/).
+## Tech Stack
 
-## Como Executar
+- **Framework:** Flutter (3.9.2+)
+- **Language:** Dart
+- **Maps:** google_maps_flutter
+- **Images:** image_picker
+- **HTTP:** http (prepared for a real API integration)
 
-1.  **Clonar o Repositório:**
-    ```bash
-    git clone <url-do-seu-repositorio>
-    cd projeto_prog_mob
-    ```
+## Project Structure
 
-2.  **Instalar Dependências:**
-    Execute o comando abaixo para descarregar todas as dependências listadas no ficheiro `pubspec.yaml`.
-    ```bash
-    flutter pub get
-    ```
+```javascript
+lib/
+├── main.dart                          # Entry point and app theme
+├── api/                               # API integrations
+├── models/                            # Data models
+│   ├── user_model.dart
+│   └── item_model.dart
+├── screens/                           # Application screens
+│   ├── login_screen.dart
+│   ├── registration_screen.dart
+│   ├── homepage_screen.dart
+│   ├── report_form_screen.dart
+│   ├── map_screen.dart
+│   └── admin/
+│       └── admin_dashboard_screen.dart
+├── services/                          # Business logic
+│   ├── auth_service.dart
+│   └── item_service.dart
+├── utils/                             # Utilities
+│   ├── colors.dart
+│   └── styles.dart
+└── widgets/                           # Reusable widgets
+    ├── custom_button.dart
+    └── custom_textfield.dart
+```
 
-3.  **Executar a Aplicação:**
-    Para executar a aplicação, utilize o seguinte comando. Para que os mapas funcionem corretamente, é recomendado fornecer a sua chave da API do MapTiler.
+## Architecture
 
-    ```bash
-    flutter run --dart-define=MAPTILER_KEY=SUA_CHAVE_AQUI
-    ```
-    Substitua `SUA_CHAVE_AQUI` pela sua chave de API do MapTiler.
+The application follows a simple layered architecture, separating concerns across three layers:
 
-## Comandos Úteis
+- **Presentation Layer** (`screens/`, `widgets/`): UI rendering, user interaction, and feedback
+- **Business Logic Layer** (`services/`): authentication state and item CRUD operations, implemented as singletons acting as mock repositories
+- **Data Layer** (`models/`): data structures with JSON serialization
 
-- **Executar sem chave de mapa (funcionalidades limitadas):**
-  ```bash
-  flutter run
-  ```
-- **Executar com chave de mapa:**
-  ```bash
-  flutter run --dart-define=MAPTILER_KEY=SUA_CHAVE_AQUI
-  ```
+### Key Patterns
 
-## Credenciais de Teste
+- **Singleton:** `AuthService` and `ItemService` ensure a single shared instance across screens
+- **Repository (simplified):** services abstract the data source, making it straightforward to migrate to Firebase or a REST API
+- **Local state:** managed with `StatefulWidget`, avoiding unnecessary complexity for a project of this scope
 
-Para facilitar a exploração da aplicação, pode usar as seguintes contas:
+### Data Flow
 
--   **Administrador**:
-    -   **Email**: `admin@sos.com`
-    -   **Senha**: `admin123`
--   **Utilizador Comum**:
-    -   **Email**: `user@sos.com`
-    -   **Senha**: `user123`
+1. User submits a report through the UI
+2. `ItemService.reportItem()` creates an item with status `pending`
+3. The item is not publicly visible until an admin validates it
+4. Once validated, the item appears on the homepage and map for all users
 
-## Limitações
+## Getting Started
 
-- **Backend**: A aplicação está conectada ao Firebase (Auth, Firestore), mas o upload de imagens para o Firebase Storage não está completamente implementado; as URLs de imagem são simuladas.
-- **Serviços Duplicados**: O ficheiro `lost_items_service.dart` tem funcionalidades redundantes com `item_service.dart` e deve ser consolidado ou removido.
-- **Geocodificação de Endereços**: A funcionalidade de pesquisa de endereço no formulário de reporte retorna resultados genéricos ("Location 1", "Location 2") e precisa de ser melhorada para exibir os nomes dos locais retornados pela API de geocodificação.
+### Prerequisites
 
-## Licença
+- Flutter SDK (3.9.2 or higher)
+- Android Studio or VS Code
+- Android/iOS emulator or a physical device
 
-Este projeto foi desenvolvido para fins educacionais. É livre para ser utilizado como referência, modificado e distribuído.
+### Installation
+
+```bash
+git clone <repository-url>
+cd projeto_prog_mob
+flutter pub get
+flutter run
+```
+
+### Google Maps Setup (Optional)
+
+The app works without map configuration, but to enable the map screen:
+
+1. Obtain an API key from the [Google Cloud Console](https://console.cloud.google.com/) and enable the Maps SDK for Android/iOS
+2. Android: replace `YOUR_API_KEY_HERE` in `android/app/src/main/AndroidManifest.xml`
+3. iOS: add the key in `ios/Runner/AppDelegate.swift` via `GMSServices.provideAPIKey("YOUR_API_KEY")` and run `pod install`
+
+### Test Credentials
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | admin@sos.com | admin123 |
+| User | user@sos.com | user123 |
+
+### Testing Flow
+
+1. Log in as a regular user
+2. Browse approved items on the homepage
+3. Report a new item (it remains pending)
+4. Log out and log in as admin
+5. Validate the pending item in the dashboard
+6. Log back in as user and confirm the item is now visible
+
+## Design
+
+Built with Material Design and a custom color scheme:
+
+- Primary: Blue `#2196F3`
+- Secondary: Light Blue `#03A9F4`
+- Accent: Orange `#FF5722`
+- Success: Green `#4CAF50`
+- Error: Red `#F44336`
+
+## Development Notes
+
+- The application currently uses in-memory mock data; data resets on app restart
+- To persist data in production, integrate with Firebase or a REST API
+- Location is simulated; use a geolocation plugin (e.g., Geolocator) for real positioning
+- Images are picked but not persisted; add Firebase Storage for production
+
+### Useful Commands
+
+```bash
+flutter analyze          # Static analysis
+flutter test             # Run tests
+flutter run -v           # Run with verbose logging
+flutter clean            # Clean build artifacts
+flutter build apk --release   # Build release APK
+```
+
+## Future Improvements
+
+- Firebase Authentication integration
+- Data persistence with Cloud Firestore
+- Real image upload with Firebase Storage
+- Real-time geolocation
+- Push notifications
+- In-app chat between users
+- Lost/found matching system
+- Recovery history tracking
+
+## License
+
+This project was developed for educational purposes.
