@@ -135,7 +135,7 @@ Built with Material Design and a custom color scheme:
 
 ## Development Notes
 
-- The application currently uses in-memory mock data; data resets on app restart
+- The application currently uses Firestore data; data resets on app restart
 - To persist data in production, integrate with Firebase or a REST API
 - Location is simulated; use a geolocation plugin (e.g., Geolocator) for real positioning
 - Images are picked but not persisted; add Firebase Storage for production
